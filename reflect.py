@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.6
 """
 Event/stats server collation and reflection.
 
