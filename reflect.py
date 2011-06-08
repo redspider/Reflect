@@ -44,21 +44,25 @@ class EventHandler(object):
     """
     Manage the connection to the event/stats server. Auto-reconnects when it loses connection.
     """
-    def __init__(self, url):
+    def __init__(self, url, verbose=False):
         self.url = url
+        self.verbose = verbose
         self.buffer = ""
         self.client = None
         self.handler = KeyHandler()
         self.backoff = 1
+        self.connected = False
 
     def connect(self):
         print "Connecting to stats server"
+        self.connected = False
         self.client = tornado.httpclient.AsyncHTTPClient()
         self.client.fetch(self.url, method="STATS", allow_nonstandard_methods=True, body="", streaming_callback=self.handle_update, callback=self.handle_disconnect)
 
     def handle_disconnect(self, *args):
         # Got a forced disconnect from the stats server
-        print "Disconnected from stats server. Attempting reconnect in %d seconds" % self.backoff
+        print "Disconnected from stats server. Attempting reconnect in %d second(s)" % self.backoff
+        self.connected = False
         tornado.ioloop.IOLoop.instance().add_timeout(self.backoff, self.connect)
 
         # Increase backoff
@@ -67,6 +71,11 @@ class EventHandler(object):
     def handle_update(self, content):
         # Successful data receive. Update backoff factor to 1s
         self.backoff = 1
+
+        # First update since connecting?
+        if not self.connected:
+            print "Connection successful, updates running"
+            self.connected = True
 
         # Because we can receive partial lines in the update
         # We add the current buffer to the content
@@ -78,7 +87,10 @@ class EventHandler(object):
         for line in lines[:-1]:
             # Remove any crap
             line = line.strip()
-            print line
+
+            # Output for debugging purposes
+            if self.verbose:
+                print line
 
             # Split up into values
             values = line.split(' ',4)
@@ -134,6 +146,9 @@ if __name__ == "__main__":
                       help = "Port to listen on",
                       type = "int",
                       default = 8888)
+    parser.add_option("--verbose","-v",
+                      help = "print event lines",
+                      action = "store_true")
 
     (options, args) = parser.parse_args()
 
@@ -144,6 +159,6 @@ if __name__ == "__main__":
     server = tornado.httpserver.HTTPServer(application)
     server.listen(options.port)
 
-    service = EventHandler(args[1])
+    service = EventHandler(args[0], options.verbose)
     service.connect()
     tornado.ioloop.IOLoop.instance().start()
