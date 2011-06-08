@@ -15,12 +15,12 @@ import sys
 streams = {}
 
 
-class KeyHandler(object):
+class EventHandler(object):
     """
     Handle various key/values supplied by EVENT via dispatch()
     """
     def dispatch(self, stream, key, value):
-        handler = getattr(self, 'key_%s' % key, None)
+        handler = getattr(self, 'key_%s' % key.lower(), None)
         if handler:
             handler(stream, value)
 
@@ -41,16 +41,49 @@ class KeyHandler(object):
         streams[stream]['listener_peak'] = int(value)
 
 
-class EventHandler(object):
+class ActionHandler(object):
+    """
+    Dispatch actions (NEW, EVENT, DELETE)
+    """
+    def __init__(self):
+        self.event_handler = EventHandler()
+
+    def dispatch(self, action, stream, *args):
+        # Dispatch to actions
+        handler = getattr(self, 'action_%s' % action.lower(), None)
+        if handler:
+            # Update for any stream we don't know about
+            if not streams.has_key(stream):
+                    streams[stream] = {}
+
+            handler(action, stream, *args)
+
+    def action_new(self, action, stream, *args):
+        """ Handle new stream """
+        streams[stream]['connected'] = 1
+
+    def action_delete(self, action, stream, *args):
+        """ Handle deleting a stream """
+        streams[stream]['connected'] = 0
+        streams[stream]['listeners'] = 0
+        streams[stream]['title'] = ""
+
+    def action_event(self, action, stream, key, value="", *args):
+        """ Dispatch event data to recorder """
+        self.event_handler.dispatch(stream, key, value)
+
+
+class ServiceHandler(object):
     """
     Manage the connection to the event/stats server. Auto-reconnects when it loses connection.
     """
+
     def __init__(self, url, verbose=False):
         self.url = url
         self.verbose = verbose
         self.buffer = ""
         self.client = None
-        self.handler = KeyHandler()
+        self.action_handler = ActionHandler()
         self.backoff = 1
         self.connected = False
 
@@ -100,32 +133,8 @@ class EventHandler(object):
             if len(values) < 2:
                 continue
 
-            (action, stream) = values[:2]
-
-            # Dispatch to actions
-            handler = getattr(self, 'action_%s' % action.lower(), None)
-            if handler:
-                # Update for any stream we don't know about
-                if not streams.has_key(stream):
-                        streams[stream] = {}
-
-                handler(*values)
-
-    def action_new(self, action, stream, *args):
-        """ Handle new stream """
-        streams[stream]['connected'] = 1
-
-    def action_delete(self, action, stream, *args):
-        """ Handle deleting a stream """
-        streams[stream]['connected'] = 0
-        streams[stream]['listeners'] = 0
-        streams[stream]['title'] = ""
-
-    def action_event(self, action, stream, key, value="", *args):
-        """ Dispatch event data to recorder """
-        self.handler.dispatch(stream, key, value)
-
-
+            self.action_handler.dispatch(*values)
+            
 class MainHandler(tornado.web.RequestHandler):
     """
     Any GET request will just give a JSON dump of the full set
@@ -160,6 +169,6 @@ if __name__ == "__main__":
     server = tornado.httpserver.HTTPServer(application)
     server.listen(options.port)
 
-    service = EventHandler(args[0], options.verbose)
+    service = ServiceHandler(args[0], options.verbose)
     service.connect()
     tornado.ioloop.IOLoop.instance().start()
