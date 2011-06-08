@@ -19,25 +19,68 @@ class EventHandler(object):
     """
     Handle various key/values supplied by EVENT via dispatch()
     """
+
     def dispatch(self, stream, key, value):
+        """
+        Dispatch to key handler
+
+        @param stream: Stream QName
+        @param key: Event key
+        @param value: Event value
+        """
+
         handler = getattr(self, 'key_%s' % key.lower(), None)
         if handler:
             handler(stream, value)
 
     def key_new(self, stream, value):
+        """
+        Handle new event - currently ignored
+
+        @param stream: Stream QName
+        @param value: Value of new
+        """
         pass
 
     def key_listeners(self, stream, value):
+        """
+        Update listeners value for stream
+
+        @param stream: Stream QName
+        @param value: Number of listeners
+        """
+
         if stream != 'global':
             streams[stream]['listeners'] = int(value)
     
     def key_connected(self, stream, value):
+        """
+        Update connected value for stream
+
+        @param stream: Stream QName
+        @param value: Number of connections
+        """
+
         streams[stream]['connected'] = int(value)
 
     def key_title(self, stream, value):
+        """
+        Update title value for stream
+
+        @param stream: Stream QName
+        @param value: Stream title
+        """
+
         streams[stream]['title'] = value
 
     def key_listener_peak(self, stream, value):
+        """
+        Update listener_peak value for stream
+
+        @param stream: Stream QName
+        @param value: Number of listeners at peak
+        """
+
         streams[stream]['listener_peak'] = int(value)
 
 
@@ -45,31 +88,64 @@ class ActionHandler(object):
     """
     Dispatch actions (NEW, EVENT, DELETE)
     """
+
     def __init__(self):
         self.event_handler = EventHandler()
 
     def dispatch(self, action, stream, *args):
-        # Dispatch to actions
+        """
+        Dispatch to the relevant action handler
+
+        @param action: Action to dispatch for
+        @param stream: Current stream
+        @param args: Any other arguments for the action (EVENT particularly)
+        @return:
+        """
+        
+        # Find handler
         handler = getattr(self, 'action_%s' % action.lower(), None)
         if handler:
             # Update for any stream we don't know about
             if not streams.has_key(stream):
                     streams[stream] = {}
 
-            handler(action, stream, *args)
+            handler(stream, *args)
 
-    def action_new(self, action, stream, *args):
-        """ Handle new stream """
+    def action_new(self, stream, *args):
+        """
+        Handle a new stream
+
+        @param stream: QName of stream
+        @param args: Ignored
+        @return:
+        """
+
         streams[stream]['connected'] = 1
 
-    def action_delete(self, action, stream, *args):
-        """ Handle deleting a stream """
+    def action_delete(self, stream, *args):
+        """
+        Handle removing a stream
+
+        @param stream: QName of stream
+        @param args: Ignored
+        @return:
+        """
+
         streams[stream]['connected'] = 0
         streams[stream]['listeners'] = 0
         streams[stream]['title'] = ""
 
-    def action_event(self, action, stream, key, value="", *args):
-        """ Dispatch event data to recorder """
+    def action_event(self, stream, key, value="", *args):
+        """
+        Handle an event (information) on a stream
+
+        @param stream: QName of stream
+        @param key: Key for event
+        @param value: Value for event
+        @param args: Ignored
+        @return:
+        """
+
         self.event_handler.dispatch(stream, key, value)
 
 
@@ -88,12 +164,21 @@ class ServiceHandler(object):
         self.connected = False
 
     def connect(self):
+        """
+        Connect to stats server
+
+        """
         print "Connecting to stats server"
         self.connected = False
         self.client = tornado.httpclient.AsyncHTTPClient()
         self.client.fetch(self.url, method="STATS", allow_nonstandard_methods=True, body="", streaming_callback=self.handle_update, callback=self.handle_disconnect)
 
     def handle_disconnect(self, *args):
+        """
+        Handle a disconnect event, including triggering backoff
+
+        @param args: Ignored
+        """
         # Got a forced disconnect from the stats server
         print "Disconnected from stats server. Attempting reconnect in %d second(s)" % self.backoff
         self.connected = False
@@ -103,6 +188,12 @@ class ServiceHandler(object):
         self.backoff *= 2
 
     def handle_update(self, content):
+        """
+        Handle streaming update
+
+        @param content: stream packet
+
+        """
         # Successful data receive. Update backoff factor to 1s
         self.backoff = 1
 
@@ -141,6 +232,13 @@ class MainHandler(tornado.web.RequestHandler):
     Any GET request will just give a JSON dump of the full set
     """
     def get(self, *args, **kwargs):
+        """
+        Handle GET request, writes out a JSON dump of the stream dataset
+
+        @param args: Ignored
+        @param kwargs: Ignored
+        @return:
+        """
         self.write(json.dumps(streams))
 
         
