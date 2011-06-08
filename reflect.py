@@ -218,7 +218,7 @@ class ServiceHandler(object):
                 print line
 
             # Split up into values
-            values = line.split(' ',4)
+            values = line.split(' ',3)
 
             # Less than 2 values and we don't know what's going on, ignore
             if len(values) < 2:
