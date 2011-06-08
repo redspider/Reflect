@@ -124,6 +124,6 @@ if __name__ == "__main__":
     server = tornado.httpserver.HTTPServer(application)
     server.listen(8888)
 
-    service = EventHandler('http://admin:fn0rd@dev.outcastdigital.com:8000')
+    service = EventHandler('http://admin:XXXXX@xxx.xxxx.xxxx.com:8000')
     service.connect()
     tornado.ioloop.IOLoop.instance().start()
