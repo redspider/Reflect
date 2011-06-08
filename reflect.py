@@ -3,10 +3,12 @@ Event/stats server collation and reflection.
 
 """
 import json
+from optparse import OptionParser
 import tornado.ioloop
 import tornado.web
 import tornado.httpserver
 import tornado.httpclient
+import sys
 
 # Singleton used to track stream data
 streams = {}
@@ -125,9 +127,22 @@ application = tornado.web.Application([
 
 # Set up server and start service request
 if __name__ == "__main__":
-    server = tornado.httpserver.HTTPServer(application)
-    server.listen(8888)
+    parser = OptionParser(usage="usage: %prog [options] http://url.to.stats/server")
 
-    service = EventHandler('http://admin:XXXXX@xxx.xxxx.xxxx.com:8000')
+    parser.add_option("--port","-p",
+                      help = "Port to listen on",
+                      type = "int",
+                      default = 8888)
+
+    (options, args) = parser.parse_args()
+
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit(1)
+
+    server = tornado.httpserver.HTTPServer(application)
+    server.listen(options.port)
+
+    service = EventHandler(args[1])
     service.connect()
     tornado.ioloop.IOLoop.instance().start()
