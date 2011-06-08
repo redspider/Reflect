@@ -171,7 +171,7 @@ class ServiceHandler(object):
         print "Connecting to stats server"
         self.connected = False
         self.client = tornado.httpclient.AsyncHTTPClient()
-        self.client.fetch(self.url, method="STATS", allow_nonstandard_methods=True, body="", streaming_callback=self.handle_update, callback=self.handle_disconnect)
+        self.client.fetch(self.url, method="STATS", allow_nonstandard_methods=True, body="", streaming_callback=self.handle_update, request_timeout=24*60*60, callback=self.handle_disconnect)
 
     def handle_disconnect(self, *args):
         """
