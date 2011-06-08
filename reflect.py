@@ -11,6 +11,7 @@ import tornado.httpclient
 # Singleton used to track stream data
 streams = {}
 
+
 class KeyHandler(object):
     """
     Handle various key/values supplied by EVENT via dispatch()
@@ -34,6 +35,7 @@ class KeyHandler(object):
 
     def key_listener_peak(self, stream, value):
         streams[stream]['listener_peak'] = int(value)
+
 
 class EventHandler(object):
     """
@@ -107,6 +109,7 @@ class EventHandler(object):
         """ Dispatch event data to recorder """
         self.handler.dispatch(stream, key, value)
 
+
 class MainHandler(tornado.web.RequestHandler):
     """
     Any GET request will just give a JSON dump of the full set
@@ -114,6 +117,7 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         self.write(json.dumps(streams))
 
+        
 # Route / to Main
 application = tornado.web.Application([
     (r"/", MainHandler),
