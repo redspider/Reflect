@@ -20,8 +20,9 @@ class KeyHandler(object):
     Handle various key/values supplied by EVENT via dispatch()
     """
     def dispatch(self, stream, key, value):
-        if hasattr(self, 'key_%s' % key):
-            getattr(self, 'key_%s' % key)(stream, value)
+        handler = getattr(self, 'key_%s' % key, None)
+        if handler:
+            handler(stream, value)
 
     def key_new(self, stream, value):
         pass
@@ -102,14 +103,14 @@ class EventHandler(object):
             (action, stream) = values[:2]
 
             # Dispatch to actions
-            action = action.lower()
-            if hasattr(self, 'action_%s' % action):
+            handler = getattr(self, 'action_%s' % action.lower(), None)
+            if handler:
                 # Update for any stream we don't know about
                 if not streams.has_key(stream):
                         streams[stream] = {}
 
-                getattr(self, 'action_%s' % action)(*values)
-            
+                handler(*values)
+
     def action_new(self, action, stream, *args):
         """ Handle new stream """
         streams[stream]['connected'] = 1
